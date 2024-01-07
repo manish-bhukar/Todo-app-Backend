@@ -1,9 +1,9 @@
 import { User } from "../models/user.js";
 import bcrypt from "bcrypt";
-import { Errorhandler } from "../Middleware/error.js";
-import { sendcookie } from "../utility/feature.js";
+import {Errorhandler} from "../Middleware/error.js";
+import {sendcookie} from "../utility/feature.js";
 
-export const login = async (req, res) => {
+export const login = async (req, res,next) => {
     try{
      const { email, password } = req.body;
      const user = await User.findOne({ email }).select("+password");//password is false so include 
@@ -19,14 +19,15 @@ export const login = async (req, res) => {
    };
    
 
-export const registerUser = async (req, res) => {
+export const registerUser = async (req, res,next) => {
     try {
       const { name, email, password } = req.body;
       let user = await User.findOne({ email });
       if(user) return next(new Errorhandler("User already exists",400));
-      const hashedpassword = await bcrypt.hash(password, 10);
+      const saltRounds = 10;
+    const salt = await bcrypt.genSalt(saltRounds);
+      const hashedpassword = await bcrypt.hash(password, salt);
       user = await User.create({ name, email, password: hashedpassword });
-      res.send(user);
       sendcookie(user, res, "Registered successfully", 201);
     } catch (error) {
       console.error(error);
@@ -35,5 +36,24 @@ export const registerUser = async (req, res) => {
         message: "Internal Server Error",
       });
     }
+  };
+  export const getMyProfile = (req, res) => {
+    res.status(200).json({
+      success: true,
+      user: req.user,
+    });
+  };
+
+  export const logout = (req, res) => {
+    res
+      .status(200)
+      .cookie("token", "", { expires: new Date(Date.now()) ,
+      sameSite:"none",
+      secure:true})
+      .json({
+        success: true,
+        message: "Logged out",
+        
+      });
   };
 
